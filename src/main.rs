@@ -959,11 +959,15 @@ impl App {
     }
 
     fn command_size(&mut self, args: &[&str]) -> Result<String, String> {
-        let current = self
-            .scene
-            .selected()
-            .ok_or("nothing selected")?
-            .world_dimensions();
+        let selected = self.scene.selected().ok_or("nothing selected")?;
+        let rotation = selected.transform.rotation;
+        if rotation.x.rem_euclid(360.0).abs() > 0.001
+            || rotation.y.rem_euclid(360.0).abs() > 0.001
+            || rotation.z.rem_euclid(360.0).abs() > 0.001
+        {
+            return Err("set dimensions before rotating; exact world-axis sizing of rotated objects is not yet supported".into());
+        }
+        let current = selected.world_dimensions();
         let target = match args {
             [x, y, z] => Some(Vec3::new(
                 parse_positive(x)?,
@@ -1635,7 +1639,7 @@ impl App {
     fn handle_mouse(&mut self, mouse: MouseEvent) {
         if self.startup {
             if mouse.kind == MouseEventKind::Down(MouseButton::Left) {
-                if mouse.row == 1 && mouse.column < 21 {
+                if mouse.row == 1 && mouse.column < 10 {
                     self.scene = Scene::default();
                     self.path = None;
                     self.startup = false;

@@ -83,9 +83,15 @@ impl Projector {
 }
 
 pub fn render(scene: &Scene, width: u32, height: u32, style: PixelStyle) -> PixelFrame {
-    let width = width.clamp(16, 1200) as usize;
-    let height = height.clamp(16, 800) as usize;
-    let scale = if width * height <= 400_000 { 2 } else { 1 };
+    let low_power =
+        std::env::var("FORGETUI_QUALITY").is_ok_and(|value| value.eq_ignore_ascii_case("low"));
+    let width = width.clamp(16, if low_power { 640 } else { 1200 }) as usize;
+    let height = height.clamp(16, if low_power { 480 } else { 800 }) as usize;
+    let scale = if !low_power && width * height <= 400_000 {
+        2
+    } else {
+        1
+    };
     let high_width = width * scale;
     let high_height = height * scale;
     let projector = Projector::new(scene, high_width, high_height);
