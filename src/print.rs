@@ -234,6 +234,7 @@ mod tests {
             PrimitiveKind::Cone,
             PrimitiveKind::Torus,
             PrimitiveKind::Wedge,
+            PrimitiveKind::Tube,
         ] {
             let mut scene = Scene::default();
             scene.objects.clear();

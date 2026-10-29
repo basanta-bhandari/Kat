@@ -17,6 +17,7 @@ pub enum PrimitiveKind {
     Wedge,
     Plane,
     Imported,
+    Tube,
 }
 
 impl PrimitiveKind {
@@ -30,6 +31,7 @@ impl PrimitiveKind {
             Self::Wedge => "Wedge",
             Self::Plane => "Plane",
             Self::Imported => "Imported Mesh",
+            Self::Tube => "Tube",
         }
     }
 }
@@ -295,6 +297,7 @@ pub fn primitive_mesh(kind: PrimitiveKind) -> Mesh {
         PrimitiveKind::Torus => torus(18, 8),
         PrimitiveKind::Wedge => wedge(),
         PrimitiveKind::Plane => plane(),
+        PrimitiveKind::Tube => tube(32),
         PrimitiveKind::Imported => Mesh {
             vertices: Vec::new(),
             triangles: Vec::new(),
@@ -306,6 +309,36 @@ pub fn primitive_mesh(kind: PrimitiveKind) -> Mesh {
         }
     }
     mesh
+}
+
+fn tube(segments: usize) -> Mesh {
+    let mut vertices = Vec::with_capacity(segments * 4);
+    for (radius, z) in [(1.0, -1.0), (0.5, -1.0), (1.0, 1.0), (0.5, 1.0)] {
+        for i in 0..segments {
+            let angle = std::f32::consts::TAU * i as f32 / segments as f32;
+            vertices.push(Vec3::new(radius * angle.cos(), radius * angle.sin(), z));
+        }
+    }
+    let mut triangles = Vec::with_capacity(segments * 8);
+    for i in 0..segments {
+        let n = (i + 1) % segments;
+        let (bo, bi, to, ti) = (i, segments + i, 2 * segments + i, 3 * segments + i);
+        let (bon, bin, ton, tin) = (n, segments + n, 2 * segments + n, 3 * segments + n);
+        triangles.extend([
+            [bo, bon, ton],
+            [bo, ton, to],
+            [bi, ti, tin],
+            [bi, tin, bin],
+            [to, ton, tin],
+            [to, tin, ti],
+            [bo, bi, bin],
+            [bo, bin, bon],
+        ]);
+    }
+    Mesh {
+        vertices,
+        triangles,
+    }
 }
 
 fn cube() -> Mesh {

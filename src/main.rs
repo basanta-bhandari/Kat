@@ -804,7 +804,8 @@ impl App {
             "torus" | "donut" => PrimitiveKind::Torus,
             "wedge" | "ramp" => PrimitiveKind::Wedge,
             "plane" => PrimitiveKind::Plane,
-            _ => return Err("try: add cube|sphere|cylinder|cone|torus|wedge|plane".into()),
+            "tube" | "pipe" => PrimitiveKind::Tube,
+            _ => return Err("try: add cube|sphere|cylinder|cone|torus|wedge|plane|tube".into()),
         };
         self.checkpoint();
         self.scene.add_primitive(kind);
@@ -1181,6 +1182,7 @@ impl App {
                     4 => Some(PrimitiveKind::Torus),
                     5 => Some(PrimitiveKind::Wedge),
                     6 => Some(PrimitiveKind::Plane),
+                    7 => Some(PrimitiveKind::Tube),
                     _ => None,
                 };
                 if let Some(kind) = kind {
@@ -1415,6 +1417,7 @@ impl App {
             KeyCode::Char('t') => self.add(PrimitiveKind::Torus),
             KeyCode::Char('w') => self.add(PrimitiveKind::Wedge),
             KeyCode::Char('p') => self.add(PrimitiveKind::Plane),
+            KeyCode::Char('u') => self.add(PrimitiveKind::Tube),
             KeyCode::Esc | KeyCode::Char('q') => self.overlay = Overlay::None,
             _ => {}
         }
@@ -1890,6 +1893,7 @@ fn menu_items(kind: MenuKind) -> &'static [&'static str] {
             "Torus",
             "Wedge",
             "Large plane",
+            "Tube / pipe",
         ],
         MenuKind::View => &[
             "Front",
@@ -2111,7 +2115,7 @@ fn draw(frame: &mut Frame, app: &mut App) {
             frame,
             theme,
             " Add primitive ",
-            "[c] Cube       [s] Sphere\n[y] Cylinder   [o] Cone\n[t] Torus      [w] Wedge\n[p] Large plane\n\n[Esc] Cancel",
+            "[c] Cube       [s] Sphere\n[y] Cylinder   [o] Cone\n[t] Torus      [w] Wedge\n[p] Large plane [u] Tube\n\n[Esc] Cancel",
             34,
             12,
         ),
