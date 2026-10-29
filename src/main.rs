@@ -155,6 +155,7 @@ struct UiRegions {
     save_formats: Rect,
     save_button: Rect,
     save_cancel: Rect,
+    project_list: Rect,
 }
 
 #[derive(Clone, Copy)]
@@ -1491,6 +1492,31 @@ impl App {
     }
 
     fn handle_mouse(&mut self, mouse: MouseEvent) {
+        if self.startup {
+            if mouse.kind == MouseEventKind::Down(MouseButton::Left) {
+                if mouse.row == 1 && mouse.column < 21 {
+                    self.scene = Scene::default();
+                    self.path = None;
+                    self.startup = false;
+                } else if contains(self.regions.project_list, mouse.column, mouse.row) {
+                    let visible = usize::from(self.regions.project_list.height.max(1));
+                    let offset = self
+                        .project_selected
+                        .saturating_sub(visible.saturating_sub(1));
+                    let index = offset + usize::from(mouse.row - self.regions.project_list.y);
+                    if index < self.project_entries.len() {
+                        self.project_selected = index;
+                        self.activate_project();
+                    }
+                }
+            } else if mouse.kind == MouseEventKind::ScrollDown {
+                self.project_selected =
+                    (self.project_selected + 1).min(self.project_entries.len().saturating_sub(1));
+            } else if mouse.kind == MouseEventKind::ScrollUp {
+                self.project_selected = self.project_selected.saturating_sub(1);
+            }
+            return;
+        }
         if self.overlay == Overlay::SaveAs {
             self.handle_save_mouse(mouse);
             return;
@@ -2041,7 +2067,7 @@ fn draw(frame: &mut Frame, app: &mut App) {
     }
 }
 
-fn draw_projects(frame: &mut Frame, app: &App) {
+fn draw_projects(frame: &mut Frame, app: &mut App) {
     let area = frame.area();
     let theme = app.theme.colors();
     frame.render_widget(
@@ -2072,8 +2098,17 @@ fn draw_projects(frame: &mut Frame, app: &App) {
             ))
         })
         .collect();
-    let mut state =
-        ListState::default().with_selected((!entries.is_empty()).then_some(app.project_selected));
+    app.regions.project_list = rows[1].inner(Margin {
+        horizontal: 1,
+        vertical: 1,
+    });
+    let visible = usize::from(app.regions.project_list.height.max(1));
+    let offset = app
+        .project_selected
+        .saturating_sub(visible.saturating_sub(1));
+    let mut state = ListState::default()
+        .with_offset(offset)
+        .with_selected((!entries.is_empty()).then_some(app.project_selected));
     let title = format!(" Projects · {} ", app.project_directory.display());
     frame.render_stateful_widget(
         List::new(entries)
