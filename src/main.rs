@@ -33,10 +33,16 @@ use std::{
     time::Duration,
 };
 
-const HELP: &str = "3D-PRINT CAD — MILLIMETRES\n  A Add   G Move   R Rotate   S Scale   E Export   ? Help\n\nMOUSE TOOLS\n  Click selects; clicking never starts a command prompt.\n  Select: left-drag orbit · right/middle-drag pan\n  Move:   left-drag screen plane · right-drag Z height\n  Rotate: left-drag X/Z · right-drag Y/Z\n  Scale:  left-drag uniform · right-drag Z only\n  Right-click without dragging opens object actions.\n  Wheel zooms; top menus and side tools are clickable.\n\nPRINT COMMANDS\n  size 20 30 5       exact X/Y/Z size in mm\n  size z 12          exact size on one axis\n  place               put selection on build plate\n  center              centre selection and place it\n  check                printable-solid validation\n  repair               weld/remove broken mesh data\n  bed 220 220 250      set build volume in mm\n  slice                export 3MF and open a slicer\n\nFILES\n  save job.forge       native editable project\n  open part.stl        STL/3MF import\n  export part.3mf      3MF or STL for printing\n  export part.step     optional FreeCAD bridge\n\nGRAPHICS  auto · kitty · sixel · ascii\nTHEMES    midnight · amber · matrix · light · mono\n\nEsc or ? closes this panel.";
+const HELP: &str = "3D-PRINT CAD — MILLIMETRES\n  A Add   G Move   R Rotate   S Scale   E Export   ? Help\n  Ctrl-S Save   Ctrl-Shift-S Save As   : Commands\n\nMOUSE TOOLS\n  Click selects · wheel zooms · right-click opens actions\n  Select: left-drag orbit · right/middle-drag pan\n  Move:   left-drag screen plane · right-drag Z height\n  Rotate: left-drag X/Z · right-drag Y/Z\n  Scale:  left-drag uniform · right-drag Z only\n\nPRINT COMMANDS\n  size 20 30 5        exact X/Y/Z size in mm\n  add tube 30 12 8    outside diameter / bore / height\n  array x 4 25        copies spaced 25 mm apart\n  place · center · check · repair\n  bed 220 220 250     build volume in mm\n  slice               open a slicer\n\nFILES\n  save job.forge · open part.stl · export part.3mf\n\nTHEMES (T cycles; use :theme NAME)\n  default · nord · tokyonight · radium · charcoal\n  catppuccin · midnight · amber · matrix · light · mono\n\nGRAPHICS  Kitty terminal only · any shell · pixel viewport\nEsc or ? closes this panel.";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum ThemeChoice {
+    Default,
+    Nord,
+    TokyoNight,
+    Radium,
+    Charcoal,
+    Catppuccin,
     Midnight,
     Amber,
     Matrix,
@@ -47,6 +53,12 @@ enum ThemeChoice {
 impl ThemeChoice {
     fn name(self) -> &'static str {
         match self {
+            Self::Default => "default",
+            Self::Nord => "nord",
+            Self::TokyoNight => "tokyonight",
+            Self::Radium => "radium",
+            Self::Charcoal => "charcoal",
+            Self::Catppuccin => "catppuccin",
             Self::Midnight => "midnight",
             Self::Amber => "amber",
             Self::Matrix => "matrix",
@@ -57,17 +69,29 @@ impl ThemeChoice {
 
     fn next(self) -> Self {
         match self {
+            Self::Default => Self::Nord,
+            Self::Nord => Self::TokyoNight,
+            Self::TokyoNight => Self::Radium,
+            Self::Radium => Self::Charcoal,
+            Self::Charcoal => Self::Catppuccin,
+            Self::Catppuccin => Self::Midnight,
             Self::Midnight => Self::Amber,
             Self::Amber => Self::Matrix,
             Self::Matrix => Self::Light,
             Self::Light => Self::Mono,
-            Self::Mono => Self::Midnight,
+            Self::Mono => Self::Default,
         }
     }
 
     fn parse(name: &str) -> Option<Self> {
         match name {
-            "midnight" | "dark" | "blue" => Some(Self::Midnight),
+            "default" | "dark" => Some(Self::Default),
+            "nord" => Some(Self::Nord),
+            "tokyonight" | "tokyo-night" | "tokyo night" => Some(Self::TokyoNight),
+            "radium" => Some(Self::Radium),
+            "charcoal" | "charcol" => Some(Self::Charcoal),
+            "catppuccin" | "catpuccin" => Some(Self::Catppuccin),
+            "midnight" | "blue" => Some(Self::Midnight),
             "amber" | "orange" => Some(Self::Amber),
             "matrix" | "green" => Some(Self::Matrix),
             "light" => Some(Self::Light),
@@ -78,6 +102,48 @@ impl ThemeChoice {
 
     fn colors(self) -> Theme {
         match self {
+            Self::Default => Theme::new(
+                Color::Rgb(18, 21, 28),
+                Color::Rgb(29, 34, 44),
+                Color::Rgb(222, 229, 239),
+                Color::Rgb(111, 181, 255),
+                Color::Rgb(108, 122, 145),
+            ),
+            Self::Nord => Theme::new(
+                Color::Rgb(46, 52, 64),
+                Color::Rgb(59, 66, 82),
+                Color::Rgb(236, 239, 244),
+                Color::Rgb(136, 192, 208),
+                Color::Rgb(112, 128, 151),
+            ),
+            Self::TokyoNight => Theme::new(
+                Color::Rgb(26, 27, 38),
+                Color::Rgb(36, 40, 59),
+                Color::Rgb(192, 202, 245),
+                Color::Rgb(122, 162, 247),
+                Color::Rgb(86, 95, 137),
+            ),
+            Self::Radium => Theme::new(
+                Color::Rgb(16, 20, 17),
+                Color::Rgb(27, 35, 27),
+                Color::Rgb(222, 240, 210),
+                Color::Rgb(185, 255, 71),
+                Color::Rgb(106, 139, 91),
+            ),
+            Self::Charcoal => Theme::new(
+                Color::Rgb(5, 6, 8),
+                Color::Rgb(13, 15, 18),
+                Color::Rgb(211, 215, 222),
+                Color::Rgb(169, 185, 207),
+                Color::Rgb(72, 79, 91),
+            ),
+            Self::Catppuccin => Theme::new(
+                Color::Rgb(30, 30, 46),
+                Color::Rgb(49, 50, 68),
+                Color::Rgb(205, 214, 244),
+                Color::Rgb(203, 166, 247),
+                Color::Rgb(108, 112, 134),
+            ),
             Self::Midnight => Theme::new(
                 Color::Rgb(10, 15, 23),
                 Color::Rgb(20, 29, 40),
@@ -302,6 +368,7 @@ enum MenuKind {
     View,
     Print,
     Update,
+    Themes,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -354,7 +421,7 @@ impl App {
             status: "Ready — press ? for help, : for commands".into(),
             dirty: false,
             quit: false,
-            theme: ThemeChoice::Light,
+            theme: ThemeChoice::Default,
             snap: 0.25,
             regions: UiRegions::default(),
             pick_frame: None,
@@ -1100,14 +1167,15 @@ impl App {
     }
 
     fn command_theme(&mut self, args: &[&str]) -> Result<String, String> {
-        self.theme = ThemeChoice::parse(args.first().copied().unwrap_or_default())
-            .ok_or("themes: midnight, amber, matrix, light, mono")?;
+        self.theme = ThemeChoice::parse(&args.join(" ").to_ascii_lowercase())
+            .ok_or("themes: default, nord, tokyonight, radium, charcoal, catppuccin, midnight, amber, matrix, light, mono")?;
         Ok(format!("Theme: {}", self.theme.name()))
     }
 
     fn command_graphics(&mut self, args: &[&str]) -> Result<String, String> {
         self.graphics = GraphicsMode::parse(args.first().copied().unwrap_or_default())
-            .ok_or("graphics modes: auto, kitty, sixel, ascii")?;
+            .ok_or("graphics modes: auto or kitty; only the Kitty terminal emulator is supported")?
+            .verified()?;
         Ok(format!(
             "Graphics: {} (active {})",
             self.graphics.label(),
@@ -1336,6 +1404,15 @@ impl App {
                 1 => self.start_update(true),
                 _ => {}
             },
+            MenuKind::Themes => {
+                if let Some(theme) = menu_items(MenuKind::Themes)
+                    .get(index)
+                    .and_then(|name| ThemeChoice::parse(&name.to_ascii_lowercase()))
+                {
+                    self.theme = theme;
+                    self.status = format!("Theme: {}", theme.name());
+                }
+            }
         }
     }
 
@@ -2009,10 +2086,23 @@ fn menu_items(kind: MenuKind) -> &'static [&'static str] {
             "Open in slicer",
         ],
         MenuKind::Update => &["Check for updates", "Install from GitHub"],
+        MenuKind::Themes => &[
+            "Default",
+            "Nord",
+            "Tokyo Night",
+            "Radium",
+            "Charcoal",
+            "Catppuccin",
+            "Midnight",
+            "Amber",
+            "Matrix",
+            "Light",
+            "Mono",
+        ],
     }
 }
 
-const NAV_MENUS: [(&str, MenuKind); 7] = [
+const NAV_MENUS: [(&str, MenuKind); 8] = [
     ("File", MenuKind::File),
     ("Edit", MenuKind::Edit),
     ("Add", MenuKind::Add),
@@ -2020,6 +2110,7 @@ const NAV_MENUS: [(&str, MenuKind); 7] = [
     ("View", MenuKind::View),
     ("Print", MenuKind::Print),
     ("Update", MenuKind::Update),
+    ("Themes", MenuKind::Themes),
 ];
 
 fn navbar_menu_at(area: Rect, column: u16) -> Option<(MenuKind, u16)> {
@@ -2403,11 +2494,7 @@ fn draw_viewport(frame: &mut Frame, app: &mut App, area: Rect) {
     let inner_width = area.width.saturating_sub(2);
     let inner_height = area.height.saturating_sub(2);
     let rendered = renderer::render_scene(&app.scene, inner_width, inner_height);
-    let rows = if app.graphics.detect() == GraphicsMode::Ascii {
-        rendered.rows.clone()
-    } else {
-        vec![" ".repeat(inner_width as usize); inner_height as usize]
-    };
+    let rows = vec![" ".repeat(inner_width as usize); inner_height as usize];
     let text = Text::from(rows.into_iter().map(Line::from).collect::<Vec<_>>());
     let title = format!(
         " Model · {} triangles · {} ",
@@ -2735,6 +2822,7 @@ fn draw_context_menu(frame: &mut Frame, app: &mut App) {
         MenuKind::View => " View ",
         MenuKind::Print => " Print ",
         MenuKind::Update => " Update ",
+        MenuKind::Themes => " Themes ",
     };
     frame.render_widget(Clear, area);
     frame.render_stateful_widget(
@@ -2775,7 +2863,7 @@ fn demo_scene() -> Scene {
 
 fn print_help() {
     println!(
-        "ForgeTUI — lightweight terminal 3D-printing CAD\n\nUSAGE:\n  forgetui [FILE]\n  forgetui --demo\n  forgetui --render [FILE]\n  forgetui --formats\n\nFILE FORMATS:\n{}\n\nInside the TUI, press ? for all controls.",
+        "ForgeTUI — lightweight terminal 3D-printing CAD\n\nUSAGE:\n  forgetui [FILE]\n  forgetui --demo\n  forgetui --formats\n\nRequires the Kitty terminal emulator with pixel graphics. Any shell works.\n\nFILE FORMATS:\n{}\n\nInside the TUI, press ? for all controls.",
         formats::format_matrix()
     );
 }
@@ -2815,7 +2903,10 @@ fn render_pixel_overlay(
         backend.write_all(&graphics::kitty_delete(app.kitty_image_id))?;
         app.kitty_image_id = 0;
     }
-    if mode == GraphicsMode::Ascii || app.regions.viewport.width == 0 {
+    if mode == GraphicsMode::Unavailable {
+        return Err(io::Error::other("Pixel graphics support is required"));
+    }
+    if app.regions.viewport.width == 0 {
         return Ok(());
     }
     let window = crossterm::terminal::window_size().ok();
@@ -2861,7 +2952,6 @@ fn render_pixel_overlay(
                 image_id,
             )
         }
-        GraphicsMode::Sixel => graphics::sixel_image(&image.rgb, image.width, image.height),
         _ => Vec::new(),
     };
     backend.write_all(&payload)?;
@@ -2951,16 +3041,23 @@ fn main() -> Result<(), Box<dyn Error>> {
         println!("{}", formats::format_matrix());
         return Ok(());
     }
-    let render_only = args.first().is_some_and(|arg| arg == "--render");
-    let demo = args.first().is_some_and(|arg| arg == "--demo");
-    let file = if render_only {
-        args.get(1)
-    } else if demo {
-        None
-    } else {
-        args.first()
+    if args.first().is_some_and(|arg| arg == "--render") {
+        return Err(
+            "ASCII rendering was removed. Run ForgeTUI in the Kitty terminal emulator with any shell."
+                .into(),
+        );
     }
-    .map(PathBuf::from);
+    if !io::stdin().is_terminal() || !io::stdout().is_terminal() {
+        return Err("The Kitty terminal emulator is required; any shell works. Redirected/ASCII output is not supported.".into());
+    }
+    let requested_graphics = match std::env::var("FORGETUI_GRAPHICS") {
+        Ok(value) => GraphicsMode::parse(&value.to_ascii_lowercase())
+            .ok_or("FORGETUI_GRAPHICS must be auto or kitty; only the Kitty terminal emulator is supported")?,
+        Err(_) => GraphicsMode::Auto,
+    };
+    let graphics = graphics::verify_terminal(requested_graphics)?;
+    let demo = args.first().is_some_and(|arg| arg == "--demo");
+    let file = if demo { None } else { args.first() }.map(PathBuf::from);
     let scene = if demo {
         demo_scene()
     } else if let Some(path) = &file {
@@ -2969,16 +3066,10 @@ fn main() -> Result<(), Box<dyn Error>> {
         Scene::default()
     };
 
-    if render_only || !io::stdout().is_terminal() {
-        let rendered = renderer::render_scene(&scene, 100, 36);
-        for row in rendered.rows {
-            println!("{row}");
-        }
-        return Ok(());
-    }
     let native_path =
         file.filter(|path| matches!(path.extension().and_then(|e| e.to_str()), Some("forge")));
     let mut app = App::new(scene, native_path);
+    app.graphics = graphics;
     if !demo && args.is_empty() {
         app.startup = true;
         app.refresh_projects();
@@ -2989,6 +3080,24 @@ fn main() -> Result<(), Box<dyn Error>> {
 #[cfg(test)]
 mod mouse_tests {
     use super::*;
+
+    #[test]
+    fn dark_default_and_theme_aliases_are_available_in_cycle() {
+        assert_eq!(App::new(Scene::default(), None).theme, ThemeChoice::Default);
+        assert_eq!(ThemeChoice::parse("charcol"), Some(ThemeChoice::Charcoal));
+        assert_eq!(
+            ThemeChoice::parse("catpuccin"),
+            Some(ThemeChoice::Catppuccin)
+        );
+        let mut theme = ThemeChoice::Default;
+        let mut names = std::collections::HashSet::new();
+        for _ in 0..11 {
+            assert!(names.insert(theme.name()));
+            assert_eq!(ThemeChoice::parse(theme.name()), Some(theme));
+            theme = theme.next();
+        }
+        assert_eq!(theme, ThemeChoice::Default);
+    }
 
     fn app_with_pickable_cube() -> (App, u16, u16) {
         let scene = Scene::default();

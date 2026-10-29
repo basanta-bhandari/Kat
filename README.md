@@ -1,12 +1,12 @@
 # ForgeTUI
 
-ForgeTUI is a lightweight terminal CAD tool focused on preparing solid models for 3D printing. It works in millimetres, uses a Z-up build plate, and renders a real anti-aliased RGB viewport through Kitty graphics or Sixel. The surrounding interface remains a low-power, mouse-enabled TUI.
+ForgeTUI is a lightweight terminal CAD tool focused on preparing solid models for 3D printing. It works in millimetres, uses a Z-up build plate, and renders a real anti-aliased RGB viewport in the Kitty terminal emulator. The surrounding interface remains a low-power, mouse-enabled TUI.
 
 > Status: functional prototype. ForgeTUI is a mesh modeller, not yet a parametric sketch/B-Rep replacement for production CAD.
 
 ## Build and run
 
-Requires Rust 1.88 or newer.
+Requires Rust 1.88 or newer and the Kitty terminal emulator. Any shell works, including bash, zsh, fish, and sh; no shell is installed or launched automatically.
 
 ```bash
 cargo build --release --locked
@@ -21,7 +21,11 @@ Open an existing printable model or the demo:
 ./target/release/forgetui --demo
 ```
 
-Graphics are detected automatically. In Kitty, use `:graphics kitty` if detection is unavailable. Sixel and a plain TTY fallback are also supported; the main experience is the pixel viewport.
+Kitty is the only supported terminal emulator. At startup ForgeTUI asks the terminal to identify itself and confirm pixel graphics support. Other emulators are rejected before opening the project browser, even if they implement the Kitty graphics protocol. There is no ASCII mode, Sixel mode, text viewport, plain TTY fallback, or headless terminal preview. Changing `TERM` or `FORGETUI_GRAPHICS` alone cannot bypass these checks.
+
+Open Kitty and run `./target/release/forgetui` from this project directory using your preferred shell. You can also launch a Kitty window directly with `kitty ./target/release/forgetui`.
+
+The UI starts in the dark **Default** theme. Press `t` to cycle themes, or enter `:theme nord`, `:theme tokyonight`, `:theme radium`, `:theme charcoal`, `:theme default`, or `:theme catppuccin`. Charcoal is the darkest palette. Existing Midnight, Amber, Matrix, Light, and Mono themes remain available. The spellings `charcol` and `catpuccin` are accepted too.
 
 Without a filename, the app opens the project browser. Click a folder or project, press `n` for a new project, use arrow keys and Enter to navigate, and `/` to filter the current folder. Explicit filenames and `--demo` open the workspace directly.
 
@@ -75,8 +79,8 @@ The former Fusion 360, Onshape, Blender, OBJ, and general-renderer ambitions are
 - Basic mesh repair, centre-on-bed, and place-on-bed tools
 - Click selection, orbit, pan, zoom, right-click actions, side toolbar, and top menus
 - Solid, wireframe, and X-ray views; perspective/orthographic cameras
-- Kitty/Sixel RGB output with lighting and anti-aliasing
-- Five themes and event-driven redraws for low idle CPU use
+- Kitty RGB output with lighting and anti-aliasing
+- Eleven themes, a dark default, and event-driven redraws for low idle CPU use
 
 ## Controls
 
@@ -98,6 +102,6 @@ The former Fusion 360, Onshape, Blender, OBJ, and general-renderer ambitions are
 | `?` | Built-in help |
 | `q` | Quit |
 
-Use `./target/release/forgetui --formats` for the format summary and `--render FILE` for a headless terminal preview.
+Use `./target/release/forgetui --formats` for the format summary. The former `--render` ASCII preview has been removed.
 
 This remains an early mesh editor: it does not provide parametric sketches, constraints, boolean operations, or a full feature history. Exact `size` commands operate on unrotated objects; size them before rotating. Basic repair cannot fill complex holes. 3MF import currently supports direct millimetre meshes; flatten component assemblies and transforms before importing. Check the resulting model in your slicer before printing.
