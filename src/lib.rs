@@ -3,6 +3,7 @@ pub mod graphics;
 pub mod math;
 pub mod pixel_renderer;
 pub mod print;
+pub mod projects;
 pub mod renderer;
 pub mod scene;
 pub mod update;
