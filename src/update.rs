@@ -2,6 +2,20 @@
 use std::process::Command;
 
 pub const SSH_REPOSITORY: &str = "git@github.com:basanta-bhandari/Kat.git";
+pub const INSTALLED_REVISION: &str = env!("FORGETUI_REVISION");
+
+pub fn check() -> Result<String, String> {
+    let latest = latest_revision()?;
+    if latest == INSTALLED_REVISION {
+        Ok(format!("Up to date: {}", &latest[..8]))
+    } else {
+        let current = INSTALLED_REVISION.get(..8).unwrap_or(INSTALLED_REVISION);
+        Ok(format!(
+            "Installed {current}; main branch {}. Choose Update to install.",
+            &latest[..8]
+        ))
+    }
+}
 
 pub fn latest_revision() -> Result<String, String> {
     let output = Command::new("git")
