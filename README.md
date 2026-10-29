@@ -1,8 +1,8 @@
-# ForgeTUI
+# Forge
 
-ForgeTUI is a lightweight terminal CAD tool focused on preparing solid models for 3D printing. It works in millimetres, uses a Z-up build plate, and renders a real anti-aliased RGB viewport in the Kitty terminal emulator. The surrounding interface remains a low-power, mouse-enabled TUI.
+ForgeTUI is a small & light tui  CAD tool for making/ preparing solid models for 3D printing(even though it lacks quite a lot of features currently). It works in millimetres, uses a Z-up build plate, and renders a real anti-aliased RGB viewport in the terminal(kitty). The surrounding interface is  efficient, and isnt completely keyboard driven(supports mouse).
 
-> Status: functional prototype. ForgeTUI is a mesh modeller, not yet a parametric sketch/B-Rep replacement for production CAD.
+> Status: functional prototype. Forge is a mesh modeller, not yet a daily driveable or replacement for production CAD.
 
 ## Build and run
 
@@ -21,7 +21,7 @@ Open an existing printable model or the demo:
 ./target/release/forgetui --demo
 ```
 
-Kitty is the only supported terminal emulator. At startup ForgeTUI asks the terminal to identify itself and confirm pixel graphics support. Other emulators are rejected before opening the project browser, even if they implement the Kitty graphics protocol. There is no ASCII mode, Sixel mode, text viewport, plain TTY fallback, or headless terminal preview. Changing `TERM` or `FORGETUI_GRAPHICS` alone cannot bypass these checks.
+Kitty is the only supported terminal . At startup Forge asks the terminal to identify itself and confirm pixel graphics support. Other emulators are rejected before opening the project browser, even if they implement the Kitty graphics protocol. There is no ASCII mode, Sixel mode, text viewport, plain TTY fallback, or headless terminal preview. Changing `TERM` or `FORGETUI_GRAPHICS` alone cannot bypass these checks.
 
 Open Kitty and run `./target/release/forgetui` from this project directory using your preferred shell. You can also launch a Kitty window directly with `kitty ./target/release/forgetui`.
 
@@ -69,18 +69,6 @@ Mouse tools directly manipulate the selected object. A click only selects; it do
 
 The former Fusion 360, Onshape, Blender, OBJ, and general-renderer ambitions are intentionally outside the product scope.
 
-## Current features
-
-- 220 × 220 × 250 mm default build volume and 10 mm bed grid
-- Cube, sphere, cylinder, cone, torus, wedge, tube, and construction plane
-- Dimensioned tube creation and linear object patterns
-- Exact dimensions, move/rotate/scale, duplicate, mirror, snap, and undo/redo
-- Watertightness, degenerate-face, non-manifold-edge, bed-fit, bounds, volume, and overhang checks
-- Basic mesh repair, centre-on-bed, and place-on-bed tools
-- Click selection, orbit, pan, zoom, right-click actions, side toolbar, and top menus
-- Solid, wireframe, and X-ray views; perspective/orthographic cameras
-- Kitty RGB output with lighting and anti-aliasing
-- Eleven themes, a dark default, and event-driven redraws for low idle CPU use
 
 ## Controls
 
@@ -104,4 +92,3 @@ The former Fusion 360, Onshape, Blender, OBJ, and general-renderer ambitions are
 
 Use `./target/release/forgetui --formats` for the format summary. The former `--render` ASCII preview has been removed.
 
-This remains an early mesh editor: it does not provide parametric sketches, constraints, boolean operations, or a full feature history. Exact `size` commands operate on unrotated objects; size them before rotating. Basic repair cannot fill complex holes. 3MF import currently supports direct millimetre meshes; flatten component assemblies and transforms before importing. Check the resulting model in your slicer before printing.
