@@ -283,15 +283,17 @@ impl Scene {
             .enumerate()
             .filter(|(_, object)| object.visible)
             .flat_map(|(object_index, object)| {
+                let vertices: Vec<Vec3> = object
+                    .mesh
+                    .vertices
+                    .iter()
+                    .map(|vertex| object.transform.point(*vertex))
+                    .collect();
                 object.mesh.triangles.iter().map(move |face| {
                     (
                         object_index,
                         object,
-                        [
-                            object.transform.point(object.mesh.vertices[face[0]]),
-                            object.transform.point(object.mesh.vertices[face[1]]),
-                            object.transform.point(object.mesh.vertices[face[2]]),
-                        ],
+                        [vertices[face[0]], vertices[face[1]], vertices[face[2]]],
                     )
                 })
             })
