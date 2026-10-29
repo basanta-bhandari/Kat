@@ -13,7 +13,7 @@ use forgetui::{
     math::Vec3,
     pixel_renderer::{self, PixelStyle},
     print, projects, renderer,
-    scene::{PrimitiveKind, Scene, ShadingMode},
+    scene::{PrimitiveKind, Scene, ShadingMode, tube_with_dimensions},
     update,
 };
 use ratatui::{
@@ -808,8 +808,34 @@ impl App {
             "tube" | "pipe" => PrimitiveKind::Tube,
             _ => return Err("try: add cube|sphere|cylinder|cone|torus|wedge|plane|tube".into()),
         };
+        let custom_tube = if kind == PrimitiveKind::Tube && args.len() > 1 {
+            let [_, outer, inner, height] = args else {
+                return Err("usage: add tube OUTER_MM INNER_MM HEIGHT_MM".into());
+            };
+            let mesh = tube_with_dimensions(
+                parse_positive(outer)?,
+                parse_positive(inner)?,
+                parse_positive(height)?,
+            )
+            .ok_or(
+                "tube dimensions must be finite, positive, and inner diameter smaller than outer",
+            )?;
+            Some(mesh)
+        } else {
+            if args.len() > 1 {
+                return Err(
+                    "additional dimensions are supported for: add tube OUTER INNER HEIGHT".into(),
+                );
+            }
+            None
+        };
         self.checkpoint();
         self.scene.add_primitive(kind);
+        if let Some(mesh) = custom_tube {
+            let object = self.scene.selected_mut().expect("new object is selected");
+            object.mesh = mesh;
+            print::place_on_bed(object);
+        }
         Ok(format!("Added {}", kind.label()))
     }
 

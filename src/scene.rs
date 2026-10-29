@@ -357,6 +357,37 @@ fn tube(segments: usize) -> Mesh {
     }
 }
 
+pub fn tube_with_dimensions(outer_diameter: f32, inner_diameter: f32, height: f32) -> Option<Mesh> {
+    if !outer_diameter.is_finite()
+        || !inner_diameter.is_finite()
+        || !height.is_finite()
+        || outer_diameter <= 0.0
+        || inner_diameter <= 0.0
+        || inner_diameter >= outer_diameter
+        || height <= 0.0
+    {
+        return None;
+    }
+    let mut mesh = tube(32);
+    for (index, vertex) in mesh.vertices.iter_mut().enumerate() {
+        let radius = if (index / 32) % 2 == 0 {
+            outer_diameter
+        } else {
+            inner_diameter
+        };
+        // The original inside radius is half the outside radius.
+        let multiplier = if (index / 32) % 2 == 0 {
+            radius * 0.5
+        } else {
+            radius
+        };
+        vertex.x *= multiplier;
+        vertex.y *= multiplier;
+        vertex.z *= height * 0.5;
+    }
+    Some(mesh)
+}
+
 fn cube() -> Mesh {
     let vertices = vec![
         Vec3::new(-1.0, -1.0, -1.0),
@@ -613,5 +644,14 @@ mod tests {
         assert_eq!(scene.objects[1].transform.position.x, 12.0);
         assert_eq!(scene.objects[2].transform.position.x, 24.0);
         assert_ne!(scene.objects[0].id, scene.objects[1].id);
+    }
+
+    #[test]
+    fn custom_tube_has_requested_outer_and_inner_radii() {
+        let mesh = tube_with_dimensions(30.0, 12.0, 8.0).unwrap();
+        assert!((mesh.vertices[0].x - 15.0).abs() < 0.001);
+        assert!((mesh.vertices[32].x - 6.0).abs() < 0.001);
+        assert_eq!(mesh.vertices[0].z, -4.0);
+        assert!(tube_with_dimensions(10.0, 12.0, 8.0).is_none());
     }
 }
