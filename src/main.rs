@@ -12,7 +12,7 @@ use forgetui::{
     graphics::{self, GraphicsMode},
     math::Vec3,
     pixel_renderer::{self, PixelStyle},
-    print, renderer,
+    print, projects, renderer,
     scene::{PrimitiveKind, Scene, ShadingMode},
 };
 use ratatui::{
@@ -329,6 +329,10 @@ struct App {
     context_menu: Option<ContextMenu>,
     measure_from: Option<Vec3>,
     save_dialog: Option<SaveDialog>,
+    startup: bool,
+    project_directory: PathBuf,
+    project_entries: Vec<projects::ProjectEntry>,
+    project_selected: usize,
 }
 
 impl App {
@@ -357,6 +361,63 @@ impl App {
             context_menu: None,
             measure_from: None,
             save_dialog: None,
+            startup: false,
+            project_directory: std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
+            project_entries: Vec::new(),
+            project_selected: 0,
+        }
+    }
+
+    fn refresh_projects(&mut self) {
+        match projects::browse(&self.project_directory) {
+            Ok(entries) => {
+                self.project_entries = entries;
+                self.project_selected = self
+                    .project_selected
+                    .min(self.project_entries.len().saturating_sub(1));
+            }
+            Err(error) => self.status = format!("Cannot browse: {error}"),
+        }
+    }
+
+    fn activate_project(&mut self) {
+        let Some(entry) = self.project_entries.get(self.project_selected).cloned() else {
+            return;
+        };
+        if entry.is_directory {
+            self.project_directory = entry.path;
+            self.project_selected = 0;
+            self.refresh_projects();
+        } else {
+            self.open(entry.path);
+            if self.status.starts_with("Opened ") {
+                self.startup = false;
+            }
+        }
+    }
+
+    fn handle_project_key(&mut self, key: KeyEvent) {
+        match key.code {
+            KeyCode::Char('n') => {
+                self.scene = Scene::default();
+                self.path = None;
+                self.startup = false;
+            }
+            KeyCode::Char('q') | KeyCode::Esc => self.quit = true,
+            KeyCode::Up => self.project_selected = self.project_selected.saturating_sub(1),
+            KeyCode::Down => {
+                self.project_selected =
+                    (self.project_selected + 1).min(self.project_entries.len().saturating_sub(1))
+            }
+            KeyCode::Enter | KeyCode::Right => self.activate_project(),
+            KeyCode::Backspace | KeyCode::Left => {
+                if let Some(parent) = self.project_directory.parent() {
+                    self.project_directory = parent.to_path_buf();
+                    self.project_selected = 0;
+                    self.refresh_projects();
+                }
+            }
+            _ => {}
         }
     }
 
@@ -1137,6 +1198,10 @@ impl App {
         if key.kind != KeyEventKind::Press {
             return;
         }
+        if self.startup {
+            self.handle_project_key(key);
+            return;
+        }
         match self.overlay {
             Overlay::Command => self.handle_command_key(key),
             Overlay::Help => {
@@ -1899,6 +1964,10 @@ fn refresh_save_entries(dialog: &mut SaveDialog) {
 }
 
 fn draw(frame: &mut Frame, app: &mut App) {
+    if app.startup {
+        draw_projects(frame, app);
+        return;
+    }
     let area = frame.area();
     let theme = app.theme.colors();
     frame.render_widget(
@@ -1970,6 +2039,55 @@ fn draw(frame: &mut Frame, app: &mut App) {
         Overlay::SaveAs => draw_save_dialog(frame, app),
         _ => {}
     }
+}
+
+fn draw_projects(frame: &mut Frame, app: &App) {
+    let area = frame.area();
+    let theme = app.theme.colors();
+    frame.render_widget(
+        Block::default().style(Style::default().fg(theme.foreground).bg(theme.background)),
+        area,
+    );
+    let rows = Layout::vertical([
+        Constraint::Length(2),
+        Constraint::Min(4),
+        Constraint::Length(2),
+    ])
+    .split(area);
+    frame.render_widget(
+        Paragraph::new(
+            "  ◈ FORGETUI    Projects\n  [N] New project    [Enter] Open    [←] Parent    [Q] Quit",
+        )
+        .style(Style::default().fg(theme.foreground).bg(theme.panel)),
+        rows[0],
+    );
+    let entries: Vec<ListItem> = app
+        .project_entries
+        .iter()
+        .map(|entry| {
+            ListItem::new(format!(
+                "  {}  {}",
+                if entry.is_directory { "▸" } else { "◇" },
+                entry.name
+            ))
+        })
+        .collect();
+    let mut state =
+        ListState::default().with_selected((!entries.is_empty()).then_some(app.project_selected));
+    let title = format!(" Projects · {} ", app.project_directory.display());
+    frame.render_stateful_widget(
+        List::new(entries)
+            .block(panel_block(&title, theme))
+            .highlight_symbol("▸")
+            .highlight_style(Style::default().fg(theme.background).bg(theme.accent)),
+        rows[1],
+        &mut state,
+    );
+    frame.render_widget(
+        Paragraph::new(format!("  {}", app.status))
+            .style(Style::default().fg(theme.muted).bg(theme.panel)),
+        rows[2],
+    );
 }
 
 fn panel_block<'a>(title: &'a str, theme: Theme) -> Block<'a> {
@@ -2497,6 +2615,9 @@ fn render_pixel_overlay(
     backend: &mut CrosstermBackend<io::Stdout>,
     app: &mut App,
 ) -> io::Result<()> {
+    if app.startup {
+        return Ok(());
+    }
     let mode = app.graphics.detect();
     if matches!(
         app.overlay,
@@ -2664,7 +2785,12 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
     let native_path =
         file.filter(|path| matches!(path.extension().and_then(|e| e.to_str()), Some("forge")));
-    run_tui(App::new(scene, native_path))
+    let mut app = App::new(scene, native_path);
+    if !demo && args.is_empty() {
+        app.startup = true;
+        app.refresh_projects();
+    }
+    run_tui(app)
 }
 
 #[cfg(test)]
