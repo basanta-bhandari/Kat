@@ -675,6 +675,7 @@ impl App {
             "rotate" | "r" => self.command_vector(&args, VectorOperation::Rotate),
             "scale" | "s" => self.command_scale(&args),
             "size" | "dimensions" | "dim" => self.command_size(&args),
+            "array" | "pattern" => self.command_array(&args),
             "duplicate" | "dup" | "d" => {
                 self.checkpoint();
                 self.scene.duplicate_selected();
@@ -870,6 +871,35 @@ impl App {
             _ => unreachable!(),
         }
         Ok(format!("Scaled by {factor}"))
+    }
+
+    fn command_array(&mut self, args: &[&str]) -> Result<String, String> {
+        let [axis, count, spacing] = args else {
+            return Err("usage: array x|y|z COUNT SPACING_MM".into());
+        };
+        let count: usize = count.parse().map_err(|_| "count must be a whole number")?;
+        if !(2..=100).contains(&count) {
+            return Err("count must be between 2 and 100".into());
+        }
+        let spacing: f32 = spacing.parse().map_err(|_| "spacing must be a number")?;
+        if !spacing.is_finite() || spacing == 0.0 {
+            return Err("spacing must be finite and nonzero".into());
+        }
+        let offset = match *axis {
+            "x" => Vec3::new(spacing, 0.0, 0.0),
+            "y" => Vec3::new(0.0, spacing, 0.0),
+            "z" => Vec3::new(0.0, 0.0, spacing),
+            _ => return Err("axis must be x, y, or z".into()),
+        };
+        if self.scene.selected().is_none() {
+            return Err("nothing selected".into());
+        }
+        self.checkpoint();
+        self.scene.linear_array(count, offset);
+        Ok(format!(
+            "Created {count} objects, {spacing} mm apart on {}",
+            axis.to_uppercase()
+        ))
     }
 
     fn command_size(&mut self, args: &[&str]) -> Result<String, String> {

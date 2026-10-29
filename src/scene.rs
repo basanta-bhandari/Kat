@@ -235,6 +235,22 @@ impl Scene {
         true
     }
 
+    /// Create evenly spaced copies; `count` includes the original object.
+    pub fn linear_array(&mut self, count: usize, offset: Vec3) -> bool {
+        let Some(original) = self.selected().cloned() else {
+            return false;
+        };
+        for index in 1..count {
+            let mut copy = original.clone();
+            copy.id = self.next_id;
+            self.next_id += 1;
+            copy.name = format!("{} {index}", original.name);
+            copy.transform.position += offset * index as f32;
+            self.objects.push(copy);
+        }
+        true
+    }
+
     pub fn selected(&self) -> Option<&Object> {
         self.objects.get(self.selected)
     }
@@ -587,5 +603,15 @@ mod tests {
         assert!(scene.duplicate_selected());
         assert_ne!(scene.objects[1].id, original_id);
         assert_eq!(scene.objects[1].transform.position.x, 5.0);
+    }
+
+    #[test]
+    fn linear_array_preserves_original_and_spaces_copies() {
+        let mut scene = Scene::default();
+        assert!(scene.linear_array(3, Vec3::new(12.0, 0.0, 0.0)));
+        assert_eq!(scene.objects.len(), 3);
+        assert_eq!(scene.objects[1].transform.position.x, 12.0);
+        assert_eq!(scene.objects[2].transform.position.x, 24.0);
+        assert_ne!(scene.objects[0].id, scene.objects[1].id);
     }
 }
