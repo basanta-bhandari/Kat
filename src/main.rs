@@ -337,6 +337,8 @@ struct App {
     project_directory: PathBuf,
     project_entries: Vec<projects::ProjectEntry>,
     project_selected: usize,
+    project_filter: String,
+    project_filtering: bool,
     update_receiver: Option<Receiver<Result<String, String>>>,
 }
 
@@ -370,6 +372,8 @@ impl App {
             project_directory: std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
             project_entries: Vec::new(),
             project_selected: 0,
+            project_filter: String::new(),
+            project_filtering: false,
             update_receiver: None,
         }
     }
@@ -377,7 +381,11 @@ impl App {
     fn refresh_projects(&mut self) {
         match projects::browse(&self.project_directory) {
             Ok(entries) => {
-                self.project_entries = entries;
+                let filter = self.project_filter.to_lowercase();
+                self.project_entries = entries
+                    .into_iter()
+                    .filter(|entry| entry.name.to_lowercase().contains(&filter))
+                    .collect();
                 self.project_selected = self
                     .project_selected
                     .min(self.project_entries.len().saturating_sub(1));
@@ -435,6 +443,7 @@ impl App {
         if entry.is_directory {
             self.project_directory = entry.path;
             self.project_selected = 0;
+            self.project_filter.clear();
             self.refresh_projects();
         } else {
             self.open(entry.path);
@@ -445,6 +454,25 @@ impl App {
     }
 
     fn handle_project_key(&mut self, key: KeyEvent) {
+        if self.project_filtering {
+            match key.code {
+                KeyCode::Enter => self.project_filtering = false,
+                KeyCode::Esc => {
+                    self.project_filter.clear();
+                    self.project_filtering = false;
+                }
+                KeyCode::Backspace => {
+                    self.project_filter.pop();
+                }
+                KeyCode::Char(character) if !key.modifiers.contains(KeyModifiers::CONTROL) => {
+                    self.project_filter.push(character)
+                }
+                _ => {}
+            }
+            self.project_selected = 0;
+            self.refresh_projects();
+            return;
+        }
         match key.code {
             KeyCode::Char('n') => {
                 self.scene = Scene::default();
@@ -452,6 +480,7 @@ impl App {
                 self.startup = false;
             }
             KeyCode::Char('q') | KeyCode::Esc => self.quit = true,
+            KeyCode::Char('/') => self.project_filtering = true,
             KeyCode::Up => self.project_selected = self.project_selected.saturating_sub(1),
             KeyCode::Down => {
                 self.project_selected =
@@ -462,6 +491,7 @@ impl App {
                 if let Some(parent) = self.project_directory.parent() {
                     self.project_directory = parent.to_path_buf();
                     self.project_selected = 0;
+                    self.project_filter.clear();
                     self.refresh_projects();
                 }
             }
@@ -2195,9 +2225,11 @@ fn draw_projects(frame: &mut Frame, app: &mut App) {
     ])
     .split(area);
     frame.render_widget(
-        Paragraph::new(
-            "  ◈ FORGETUI    Projects\n  [N] New project    [Enter] Open    [←] Parent    [Q] Quit",
-        )
+        Paragraph::new(format!(
+            "  ◈ FORGETUI    Projects\n  [N] New   [Enter] Open   [←] Parent   [/] Filter: {}{}",
+            app.project_filter,
+            if app.project_filtering { "_" } else { "" }
+        ))
         .style(Style::default().fg(theme.foreground).bg(theme.panel)),
         rows[0],
     );
