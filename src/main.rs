@@ -2065,7 +2065,7 @@ fn parse_positive(value: &str) -> Result<f32, String> {
     let value = value
         .parse::<f32>()
         .map_err(|_| "value must be a number".to_string())?;
-    if value <= 0.0 {
+    if !value.is_finite() || value <= 0.0 {
         Err("value must be greater than zero".into())
     } else {
         Ok(value)

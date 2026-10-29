@@ -35,7 +35,7 @@ pub fn save(scene: &Scene, path: &Path) -> Result<()> {
 }
 
 pub fn load(path: &Path) -> Result<Scene> {
-    match extension(path).as_str() {
+    let scene = match extension(path).as_str() {
         "forge" => load_native(path),
         "stl" => import_stl(path),
         "3mf" => import_3mf(path),
@@ -43,7 +43,38 @@ pub fn load(path: &Path) -> Result<Scene> {
         ext => Err(FormatError(format!(
             "unknown input format '.{ext}'; use .forge, .stl, .3mf, or optional .step"
         ))),
+    }?;
+    validate_scene(&scene)?;
+    Ok(scene)
+}
+
+fn validate_scene(scene: &Scene) -> Result<()> {
+    for object in &scene.objects {
+        if object
+            .mesh
+            .vertices
+            .iter()
+            .any(|vertex| !vertex.x.is_finite() || !vertex.y.is_finite() || !vertex.z.is_finite())
+        {
+            return Err(FormatError(format!(
+                "{} has non-finite vertex coordinates",
+                object.name
+            )));
+        }
+        if object
+            .mesh
+            .triangles
+            .iter()
+            .flatten()
+            .any(|&index| index >= object.mesh.vertices.len())
+        {
+            return Err(FormatError(format!(
+                "{} has an out-of-range triangle index",
+                object.name
+            )));
+        }
     }
+    Ok(())
 }
 
 fn extension(path: &Path) -> String {
@@ -234,6 +265,21 @@ pub fn import_3mf(path: &Path) -> Result<Scene> {
     let model = zip_member(&archive, "3D/3dmodel.model")?;
     let xml =
         String::from_utf8(model).map_err(|_| FormatError("3MF model XML is not UTF-8".into()))?;
+    let model_tag = xml
+        .find("<model")
+        .and_then(|start| xml[start..].find('>').map(|end| &xml[start..start + end]))
+        .ok_or_else(|| FormatError("3MF has no model tag".into()))?;
+    if xml_attr(model_tag, "unit").is_some_and(|unit| unit != "millimeter") {
+        return Err(FormatError(
+            "3MF units other than millimeters are not yet supported".into(),
+        ));
+    }
+    if xml.contains("<components") || xml.contains(" transform=") {
+        return Err(FormatError(
+            "3MF components and build transforms are not yet supported; export a flattened mesh"
+                .into(),
+        ));
+    }
     let mut scene = empty_scene(path);
     let mut remaining = xml.as_str();
     while let Some(start) = remaining.find("<object ") {
@@ -673,6 +719,18 @@ mod tests {
                 .unwrap_err()
                 .to_string()
                 .contains(".3mf")
+        );
+    }
+
+    #[test]
+    fn malformed_mesh_indices_are_rejected() {
+        let mut scene = Scene::default();
+        scene.objects[0].mesh.triangles[0][0] = usize::MAX;
+        assert!(
+            validate_scene(&scene)
+                .unwrap_err()
+                .to_string()
+                .contains("index")
         );
     }
 }
