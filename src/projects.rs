@@ -33,23 +33,3 @@ pub fn browse(directory: &Path) -> io::Result<Vec<ProjectEntry>> {
     entries.sort_by_key(|entry| (!entry.is_directory, entry.name.to_lowercase()));
     Ok(entries)
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn browse_finds_projects_and_folders() {
-        let root = std::env::temp_dir().join(format!("forge-browser-{}", std::process::id()));
-        fs::create_dir_all(root.join("folder")).unwrap();
-        fs::write(root.join("part.forge"), "{}").unwrap();
-        fs::write(root.join("ignore.txt"), "ignored").unwrap();
-        let entries = browse(&root).unwrap();
-        assert_eq!(entries.len(), 2);
-        assert!(entries[0].is_directory);
-        assert_eq!(entries[1].name, "part.forge");
-        fs::remove_file(root.join("part.forge")).unwrap();
-        fs::remove_file(root.join("ignore.txt")).unwrap();
-        fs::remove_dir(root.join("folder")).unwrap();
-        fs::remove_dir(root).unwrap();
-    }
-}

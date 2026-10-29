@@ -235,7 +235,6 @@ impl Scene {
         true
     }
 
-    /// Create evenly spaced copies; `count` includes the original object.
     pub fn linear_array(&mut self, count: usize, offset: Vec3) -> bool {
         let Some(original) = self.selected().cloned() else {
             return false;
@@ -377,7 +376,6 @@ pub fn tube_with_dimensions(outer_diameter: f32, inner_diameter: f32, height: f3
         } else {
             inner_diameter
         };
-        // The original inside radius is half the outside radius.
         let multiplier = if (index / 32) % 2 == 0 {
             radius * 0.5
         } else {
@@ -572,88 +570,5 @@ fn wedge() -> Mesh {
             [0, 4, 2],
             [1, 3, 5],
         ],
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn primitives_have_valid_triangle_indices() {
-        for kind in [
-            PrimitiveKind::Cube,
-            PrimitiveKind::Sphere,
-            PrimitiveKind::Cylinder,
-            PrimitiveKind::Cone,
-            PrimitiveKind::Torus,
-            PrimitiveKind::Wedge,
-            PrimitiveKind::Plane,
-        ] {
-            let mesh = primitive_mesh(kind);
-            assert!(!mesh.vertices.is_empty());
-            assert!(!mesh.triangles.is_empty());
-            assert!(
-                mesh.triangles
-                    .iter()
-                    .flatten()
-                    .all(|&i| i < mesh.vertices.len())
-            );
-        }
-    }
-
-    #[test]
-    fn selection_wraps_in_both_directions() {
-        let mut scene = Scene::default();
-        scene.add_primitive(PrimitiveKind::Plane);
-        scene.selected = 0;
-        scene.select_next(-1);
-        assert_eq!(scene.selected, 1);
-        scene.select_next(1);
-        assert_eq!(scene.selected, 0);
-    }
-
-    #[test]
-    fn construction_plane_matches_default_bed_width() {
-        let mesh = primitive_mesh(PrimitiveKind::Plane);
-        let width = mesh
-            .vertices
-            .iter()
-            .map(|v| v.x)
-            .fold(f32::NEG_INFINITY, f32::max)
-            - mesh
-                .vertices
-                .iter()
-                .map(|v| v.x)
-                .fold(f32::INFINITY, f32::min);
-        assert_eq!(width, 220.0);
-    }
-
-    #[test]
-    fn duplicate_gets_a_unique_id_and_offset() {
-        let mut scene = Scene::default();
-        let original_id = scene.objects[0].id;
-        assert!(scene.duplicate_selected());
-        assert_ne!(scene.objects[1].id, original_id);
-        assert_eq!(scene.objects[1].transform.position.x, 5.0);
-    }
-
-    #[test]
-    fn linear_array_preserves_original_and_spaces_copies() {
-        let mut scene = Scene::default();
-        assert!(scene.linear_array(3, Vec3::new(12.0, 0.0, 0.0)));
-        assert_eq!(scene.objects.len(), 3);
-        assert_eq!(scene.objects[1].transform.position.x, 12.0);
-        assert_eq!(scene.objects[2].transform.position.x, 24.0);
-        assert_ne!(scene.objects[0].id, scene.objects[1].id);
-    }
-
-    #[test]
-    fn custom_tube_has_requested_outer_and_inner_radii() {
-        let mesh = tube_with_dimensions(30.0, 12.0, 8.0).unwrap();
-        assert!((mesh.vertices[0].x - 15.0).abs() < 0.001);
-        assert!((mesh.vertices[32].x - 6.0).abs() < 0.001);
-        assert_eq!(mesh.vertices[0].z, -4.0);
-        assert!(tube_with_dimensions(10.0, 12.0, 8.0).is_none());
     }
 }

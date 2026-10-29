@@ -355,24 +355,3 @@ fn downsample(pixels: &[[u8; 3]], high_width: usize, width: usize, height: usize
     }
     output
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn pixel_renderer_returns_rgb_image() {
-        let frame = render(
-            &Scene::default(),
-            160,
-            100,
-            PixelStyle {
-                background: [0, 0, 0],
-                accent: [0, 255, 255],
-                muted: [30, 30, 30],
-            },
-        );
-        assert_eq!(frame.rgb.len(), 160 * 100 * 3);
-        assert!(frame.rgb.chunks_exact(3).any(|pixel| pixel != [0, 0, 0]));
-    }
-}

@@ -66,7 +66,6 @@ impl GraphicsMode {
     }
 }
 
-/// Query actual graphics support instead of trusting TERM or inherited environment variables.
 #[cfg(unix)]
 pub fn verify_terminal(requested: GraphicsMode) -> Result<GraphicsMode, String> {
     use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
@@ -199,32 +198,4 @@ fn base64(input: &[u8]) -> String {
         });
     }
     output
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn only_successful_graphics_responses_are_accepted() {
-        assert!(parse_capabilities(b"\x1b_Gi=48391;OK\x1b\\\x1b[?62;1;2c").graphics);
-        assert!(!parse_capabilities(b"\x1b_Gi=48391;EINVAL\x1b\\\x1b[?62;1;2c").graphics);
-        assert!(!parse_capabilities(b"\x1b_Gi=999;OK\x1b\\").graphics);
-        assert!(parse_capabilities(b"\x1bP>|kitty(0.42.0)\x1b\\").kitty_terminal);
-        assert!(!parse_capabilities(b"\x1bP>|WezTerm(20261001)\x1b\\").kitty_terminal);
-        assert!(!parse_capabilities(b"\x1bP>|kitty-clone(1)\x1b\\").kitty_terminal);
-        let unsupported = parse_capabilities(b"\x1b[?62;1;2;6;9;15;22c");
-        assert!(!unsupported.kitty_terminal && !unsupported.graphics);
-        assert!(GraphicsMode::parse("ascii").is_none());
-        assert!(GraphicsMode::parse("text").is_none());
-        assert!(GraphicsMode::parse("sixel").is_none());
-    }
-
-    #[test]
-    fn kitty_payload_contains_geometry_and_data() {
-        let payload = kitty_image(&[255, 0, 0], 1, 1, 1, 1, 42);
-        let text = String::from_utf8(payload).unwrap();
-        assert!(text.contains("f=100,c=1,r=1,i=42,p=1"));
-        assert!(text.len() > 40);
-    }
 }

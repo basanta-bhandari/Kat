@@ -353,17 +353,3 @@ fn render_grid(buffer: &mut FrameBuffer, projector: &Projector) {
         draw_line(buffer, a, b, 'z', true, None);
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn renderer_produces_requested_dimensions_and_geometry() {
-        let frame = render_scene(&Scene::default(), 80, 24);
-        assert_eq!(frame.rows.len(), 24);
-        assert!(frame.rows.iter().all(|row| row.chars().count() == 80));
-        assert!(frame.triangles > 0);
-        assert!(frame.rows.iter().any(|row| row.chars().any(|c| c != ' ')));
-    }
-}

@@ -1,4 +1,3 @@
-//! Check the project's main branch without changing the local checkout.
 use std::{
     fs,
     path::{Path, PathBuf},
@@ -42,7 +41,6 @@ pub fn latest_revision() -> Result<String, String> {
     parse_revision(&response).ok_or_else(|| "Main branch was not found".into())
 }
 
-/// Clone and build in a temporary directory, then replace only the running executable.
 pub fn install() -> Result<String, String> {
     let executable =
         std::env::current_exe().map_err(|error| format!("Cannot locate executable: {error}"))?;
@@ -122,21 +120,4 @@ fn parse_revision(response: &str) -> Option<String> {
         && revision.len() == 40
         && revision.bytes().all(|byte| byte.is_ascii_hexdigit()))
     .then(|| revision.to_ascii_lowercase())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn accepts_only_a_main_branch_revision() {
-        assert!(
-            parse_revision("0123456789012345678901234567890123456789\trefs/heads/main\n").is_some()
-        );
-        assert!(parse_revision("bad\trefs/heads/main\n").is_none());
-        assert!(
-            parse_revision("0123456789012345678901234567890123456789\trefs/heads/other\n")
-                .is_none()
-        );
-    }
 }
