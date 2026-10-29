@@ -14,6 +14,7 @@ use forgetui::{
     pixel_renderer::{self, PixelStyle},
     print, projects, renderer,
     scene::{PrimitiveKind, Scene, ShadingMode},
+    update,
 };
 use ratatui::{
     Frame, Terminal,
@@ -28,6 +29,7 @@ use std::{
     fs,
     io::{self, IsTerminal, Write},
     path::{Path, PathBuf},
+    sync::mpsc::{self, Receiver},
     time::Duration,
 };
 
@@ -299,6 +301,7 @@ enum MenuKind {
     Add,
     View,
     Print,
+    Update,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -334,6 +337,7 @@ struct App {
     project_directory: PathBuf,
     project_entries: Vec<projects::ProjectEntry>,
     project_selected: usize,
+    update_receiver: Option<Receiver<Result<String, String>>>,
 }
 
 impl App {
@@ -366,6 +370,7 @@ impl App {
             project_directory: std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
             project_entries: Vec::new(),
             project_selected: 0,
+            update_receiver: None,
         }
     }
 
@@ -378,6 +383,48 @@ impl App {
                     .min(self.project_entries.len().saturating_sub(1));
             }
             Err(error) => self.status = format!("Cannot browse: {error}"),
+        }
+    }
+
+    fn start_update(&mut self, install: bool) {
+        if self.update_receiver.is_some() {
+            self.status = "An update operation is already running".into();
+            return;
+        }
+        let (sender, receiver) = mpsc::channel();
+        self.update_receiver = Some(receiver);
+        self.status = if install {
+            "Downloading and building update…"
+        } else {
+            "Checking main over SSH…"
+        }
+        .into();
+        std::thread::spawn(move || {
+            let result = if install {
+                update::install()
+            } else {
+                update::check()
+            };
+            let _ = sender.send(result);
+        });
+    }
+
+    fn poll_update(&mut self) -> bool {
+        let Some(receiver) = self.update_receiver.as_ref() else {
+            return false;
+        };
+        match receiver.try_recv() {
+            Ok(result) => {
+                self.status = result.unwrap_or_else(|error| format!("Error: {error}"));
+                self.update_receiver = None;
+                true
+            }
+            Err(mpsc::TryRecvError::Disconnected) => {
+                self.status = "Error: update worker stopped".into();
+                self.update_receiver = None;
+                true
+            }
+            Err(mpsc::TryRecvError::Empty) => false,
         }
     }
 
@@ -1192,6 +1239,11 @@ impl App {
                 }
                 _ => {}
             },
+            MenuKind::Update => match index {
+                0 => self.start_update(false),
+                1 => self.start_update(true),
+                _ => {}
+            },
         }
     }
 
@@ -1862,16 +1914,18 @@ fn menu_items(kind: MenuKind) -> &'static [&'static str] {
             "Export 3MF…",
             "Open in slicer",
         ],
+        MenuKind::Update => &["Check for updates", "Install from GitHub"],
     }
 }
 
-const NAV_MENUS: [(&str, MenuKind); 6] = [
+const NAV_MENUS: [(&str, MenuKind); 7] = [
     ("File", MenuKind::File),
     ("Edit", MenuKind::Edit),
     ("Add", MenuKind::Add),
     ("Object", MenuKind::Object),
     ("View", MenuKind::View),
     ("Print", MenuKind::Print),
+    ("Update", MenuKind::Update),
 ];
 
 fn navbar_menu_at(area: Rect, column: u16) -> Option<(MenuKind, u16)> {
@@ -2584,6 +2638,7 @@ fn draw_context_menu(frame: &mut Frame, app: &mut App) {
         MenuKind::Add => " Add ",
         MenuKind::View => " View ",
         MenuKind::Print => " Print ",
+        MenuKind::Update => " Update ",
     };
     frame.render_widget(Clear, area);
     frame.render_stateful_widget(
@@ -2755,7 +2810,14 @@ fn run_tui(mut app: App) -> Result<(), Box<dyn Error>> {
             if app.quit {
                 break;
             }
-            redraw |= process_event(&mut app, event::read()?);
+            if app.update_receiver.is_some() {
+                if event::poll(Duration::from_millis(150))? {
+                    redraw |= process_event(&mut app, event::read()?);
+                }
+                redraw |= app.poll_update();
+            } else {
+                redraw |= process_event(&mut app, event::read()?);
+            }
             for _ in 0..64 {
                 if !event::poll(Duration::ZERO)? {
                     break;
