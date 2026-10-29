@@ -100,11 +100,11 @@ impl ThemeChoice {
                 Color::Rgb(50, 145, 75),
             ),
             Self::Light => Theme::new(
-                Color::Rgb(232, 236, 239),
-                Color::Rgb(210, 217, 223),
-                Color::Rgb(25, 32, 40),
-                Color::Rgb(0, 105, 148),
-                Color::Rgb(85, 95, 105),
+                Color::Rgb(250, 251, 252),
+                Color::Rgb(234, 238, 242),
+                Color::Rgb(37, 47, 58),
+                Color::Rgb(18, 105, 173),
+                Color::Rgb(145, 157, 168),
             ),
             Self::Mono => Theme::new(
                 Color::Black,
@@ -352,7 +352,7 @@ impl App {
             status: "Ready — press ? for help, : for commands".into(),
             dirty: false,
             quit: false,
-            theme: ThemeChoice::Midnight,
+            theme: ThemeChoice::Light,
             snap: 0.25,
             regions: UiRegions::default(),
             pick_frame: None,
@@ -2242,7 +2242,7 @@ fn draw_projects(frame: &mut Frame, app: &mut App) {
 fn panel_block<'a>(title: &'a str, theme: Theme) -> Block<'a> {
     Block::default()
         .borders(Borders::ALL)
-        .border_type(BorderType::Rounded)
+        .border_type(BorderType::Plain)
         .border_style(Style::default().fg(theme.muted))
         .title(Span::styled(
             title,
@@ -2260,7 +2260,7 @@ fn draw_header(frame: &mut Frame, app: &mut App, area: Rect) {
         .as_ref()
         .map(|p| p.display().to_string())
         .unwrap_or_else(|| "Untitled.forge".into());
-    let left = format!(" ◈ FORGETUI · PRINT CAD   {file}{dirty}");
+    let left = format!(" ◈ ForgeTUI   ☰   {file}{dirty}");
     let right = format!(
         " {} · {} · {} · {:.0}×{:.0}×{:.0} mm ",
         app.scene.shading.label(),
@@ -2340,8 +2340,8 @@ fn draw_outliner(frame: &mut Frame, app: &App, area: Rect) {
         .collect();
     if items.is_empty() {
         frame.render_widget(
-            Paragraph::new("\n  No objects yet\n\n  Press A or use\n  Add in the menu")
-                .block(panel_block(" Objects ", theme))
+            Paragraph::new("\n  No features yet\n\n  Press A or use\n  Add in the menu")
+                .block(panel_block(" Features ", theme))
                 .style(Style::default().fg(theme.muted).bg(theme.background)),
             area,
         );
@@ -2350,7 +2350,7 @@ fn draw_outliner(frame: &mut Frame, app: &App, area: Rect) {
     let mut state =
         ListState::default().with_selected((!items.is_empty()).then_some(app.scene.selected));
     let list = List::new(items)
-        .block(panel_block(" Objects ", theme))
+        .block(panel_block(" Features ", theme))
         .highlight_symbol("▸")
         .highlight_style(
             Style::default()
@@ -2421,7 +2421,7 @@ fn draw_inspector(frame: &mut Frame, app: &App, area: Rect) {
     };
     frame.render_widget(
         Paragraph::new(text)
-            .block(panel_block(" Inspector ", theme))
+            .block(panel_block(" Properties ", theme))
             .style(Style::default().fg(theme.foreground).bg(theme.background))
             .wrap(Wrap { trim: false }),
         area,
